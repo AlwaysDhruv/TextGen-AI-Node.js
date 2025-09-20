@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import Particles from "@tsparticles/react";
 import { loadFull } from "tsparticles";
 
+// Imports for NavigationBar and Footer are added back
 import NavigationBar from '../components/NavigationBar';
 import HeroSection from '../components/HeroSection';
 import AboutSection from '../components/AboutSection';
@@ -75,13 +76,17 @@ function HomePage() {
     <div className="App">
       <Particles id="tsparticles" init={particlesInit} options={particleOptions} />
       
+      {/* NavigationBar is added back here */}
       <NavigationBar />
+      
       <main>
         <HeroSection />
         <AboutSection />
         <FeaturesSection />
         <ContactForm />
       </main>
+
+      {/* Footer is added back here */}
       <Footer />
     </div>
   );
