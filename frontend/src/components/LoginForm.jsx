@@ -9,19 +9,22 @@ function LoginForm({ onSwitchToSignup }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/auth/login', {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
+
       const data = await res.json();
+
       if (res.ok) {
         localStorage.setItem('token', data.token);
-        navigate('/'); // Redirect to home page on successful login
+        navigate('/');
       } else {
         alert(data.msg || 'Login failed.');
       }
     } catch (err) {
+      console.error('Login error:', err);
       alert('Server error. Please try again.');
     }
   };
@@ -51,7 +54,7 @@ function LoginForm({ onSwitchToSignup }) {
         <button type="submit">Login</button>
       </form>
       <div className="redirect-link">
-        Don't have an account? <a onClick={onSwitchToSignup}>Sign Up</a>
+        Don&apos;t have an account? <a onClick={onSwitchToSignup}>Sign Up</a>
       </div>
     </div>
   );

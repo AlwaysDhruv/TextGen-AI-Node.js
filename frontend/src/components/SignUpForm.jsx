@@ -10,19 +10,24 @@ function SignUpForm({ onSwitchToLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/auth/signup', {
+      const res = await fetch('http://localhost:5000/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, password }),
+        // FIX: backend expects `name`, not `fullName`
+        body: JSON.stringify({ name: fullName, email, password }),
       });
+
       const data = await res.json();
+
       if (res.ok) {
         localStorage.setItem('token', data.token);
         navigate('/'); // Redirect to home on successful signup
       } else {
+        // Show backend error message if available
         alert(data.msg || 'Signup failed.');
       }
     } catch (err) {
+      console.error('Signup error:', err);
       alert('Server error. Please try again.');
     }
   };

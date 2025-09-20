@@ -12,8 +12,7 @@ function NavigationBar() {
   return (
     <nav className="flex justify-between items-center p-6 bg-black/60 backdrop-blur-md z-10 border-b border-gray-800">
       <div>
-        {/* This link now points to the /developers page */}
-        <Link to="/developers" className="text-white hover:text-blue-400 font-bold text-xl tracking-wide flex items-center gap-2 transition">
+        <Link to="/" className="text-white hover:text-blue-400 font-bold text-xl tracking-wide flex items-center gap-2 transition">
           <i className="fas fa-code text-blue-500"></i> Developers
         </Link>
       </div>
