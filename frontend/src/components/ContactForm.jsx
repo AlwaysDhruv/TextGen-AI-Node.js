@@ -49,15 +49,15 @@ function ContactForm() {
 
       <form onSubmit={handleSubmit} className="bg-black/50 backdrop-blur-md p-6 rounded-lg shadow-md space-y-4">
         <div>
-          <label htmlFor="name" className="block text-gray-300 mb-1 text-left">Your Name</label>
+          <label htmlFor="name" className="block text-gray-300 mb-1 text-center">Your Name</label>
           <input type="text" id="name" name="name" value={formState.name} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500" required />
         </div>
         <div>
-          <label htmlFor="email" className="block text-gray-300 mb-1 text-left">Your Email</label>
+          <label htmlFor="email" className="block text-gray-300 mb-1 text-center">Your Email</label>
           <input type="email" id="email" name="email" value={formState.email} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500" required />
         </div>
         <div>
-          <label htmlFor="message" className="block text-gray-300 mb-1 text-left">Your Message</label>
+          <label htmlFor="message" className="block text-gray-300 mb-1 text-center">Your Message</label>
           <textarea id="message" name="message" rows="4" value={formState.message} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500" required></textarea>
         </div>
         <button type="submit" disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition">
