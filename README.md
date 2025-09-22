@@ -1,6 +1,6 @@
-# MERN Stack Application
+# MERN Stack Application with AI Chat
 
-This is a full-stack web application built with the MERN (MongoDB, Express, React, Node.js) stack. It includes user authentication and a contact form.
+This is a full-stack web application built with the MERN (MongoDB, Express, React, Node.js) stack. It includes user authentication, a contact form, and an AI-powered chat feature using Google's Gemini Pro model.
 
 ## Tech Stack
 
@@ -24,12 +24,14 @@ This is a full-stack web application built with the MERN (MongoDB, Express, Reac
 - **Bcrypt.js:** A library for hashing passwords.
 - **Nodemailer:** A module for Node.js applications to allow easy as cake email sending.
 - **Dotenv:** A zero-dependency module that loads environment variables from a `.env` file into `process.env`.
+- **@google/generative-ai:** Google's SDK for the Gemini API.
 
 ## Features
 
 -   User registration and login with JWT authentication.
 -   A contact form that sends an email using Nodemailer.
 -   Interactive globe and particle animations on the frontend.
+-   **New:** AI-powered chat feature using Google's Gemini model.
 
 ## API Endpoints
 
@@ -42,6 +44,10 @@ This is a full-stack web application built with the MERN (MongoDB, Express, Reac
 
 -   `POST /api/contact`: Send a message from the contact form.
 
+### Chat
+
+-   `POST /api/chat`: Send a message to the AI and get a response.
+
 ## Getting Started
 
 ### Prerequisites
@@ -53,6 +59,7 @@ This is a full-stack web application built with the MERN (MongoDB, Express, Reac
     -   `EMAIL_USER`: Your email address for sending emails.
     -   `EMAIL_PASS`: Your email password.
     -   `MONGO_URI`: Your MongoDB connection string.
+    -   `GEMINI_API_KEY`: Your API key for the Gemini API.
 
 ### Backend Setup
 
@@ -85,3 +92,5 @@ This is a full-stack web application built with the MERN (MongoDB, Express, Reac
     npm run dev
     ```
     The frontend development server will be running on `http://localhost:5173` (by default, can be configured).
+
+    Once the application is running, you can access the chat feature by navigating to the `/chat` route. You will need to enter your Gemini API key in the chat interface to use the AI chat.
