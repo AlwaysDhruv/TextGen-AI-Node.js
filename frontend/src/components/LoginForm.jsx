@@ -19,7 +19,16 @@ function LoginForm({ onSwitchToSignup }) {
 
       if (res.ok) {
         localStorage.setItem('token', data.token);
-        navigate('/');
+
+        // Check if the user object and name exist before trying to save it
+        if (data.user && data.user.name) {
+          localStorage.setItem('userName', data.user.name);
+        } else {
+          console.warn('User name not found in API response.');
+          localStorage.removeItem('userName');
+        }
+        
+        navigate('/message');
       } else {
         alert(data.msg || 'Login failed.');
       }

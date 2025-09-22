@@ -7,9 +7,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Middleware
+// --- Middleware ---
 app.use(cors());
-app.use(express.json()); // replaces bodyParser.json()
+app.use(express.json());
 
 // --- MongoDB Connection ---
 if (!process.env.MONGO_URI) {
@@ -19,23 +19,27 @@ if (!process.env.MONGO_URI) {
 
 mongoose
   .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected'))
+  .then(() => console.log('✅ MongoDB connected'))
   .catch((err) => {
-    console.error('MongoDB connection error:', err);
+    console.error('❌ MongoDB connection error:', err);
     process.exit(1);
   });
 
 // --- Routes ---
-app.use('/api/auth', require('./routes/auth')); // signup + login routes
+const authRoutes = require('./routes/auth');   // CommonJS
+const chatRoutes = require('./routes/chat');   // CommonJS
+
+app.use('/api/auth', authRoutes);
+app.use('/api/chat', chatRoutes);
 
 // --- Nodemailer Transporter ---
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
-  secure: false, // TLS
+  secure: false, // use TLS
   auth: {
     user: process.env.EMAIL_USER, // your Gmail address
-    pass: process.env.EMAIL_PASS, // app password
+    pass: process.env.EMAIL_PASS, // Gmail app password
   },
 });
 
@@ -49,7 +53,7 @@ app.post('/api/contact', (req, res) => {
 
   const mailOptions = {
     from: `TextGen-AI Contact <${process.env.EMAIL_USER}>`,
-    to: 'sonavanebharat92@gmail.com, huzaifaravat7@gmail.com', // your recipients
+    to: 'sonavanebharat92@gmail.com, huzaifaravat7@gmail.com', // recipients
     subject: 'TextGen-AI Contact Form',
     text: `You received a new message:\n\nName: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
   };
@@ -59,12 +63,12 @@ app.post('/api/contact', (req, res) => {
       console.error('Error sending email:', error);
       return res.status(500).json({ success: false, message: `Mailer Error: ${error.message}` });
     }
-    console.log('Message sent: %s', info.messageId);
+    console.log('📨 Message sent: %s', info.messageId);
     res.status(200).json({ success: true, message: 'Message sent successfully!' });
   });
 });
 
 // --- Start server ---
 app.listen(port, () => {
-  console.log(`Server is running on port: ${port}`);
+  console.log(`🚀 Server is running on port: ${port}`);
 });

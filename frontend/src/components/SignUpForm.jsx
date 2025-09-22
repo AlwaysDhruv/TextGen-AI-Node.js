@@ -31,6 +31,31 @@ function SignUpForm({ onSwitchToLogin }) {
       alert('Server error. Please try again.');
     }
   };
+// Inside your login or signup submission handler
+async function handleLogin(e) {
+  e.preventDefault();
+  try {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Assuming your backend sends the user name upon successful login
+      // You would save this to a global state or local storage
+      localStorage.setItem('userName', data.user.name); 
+      // Redirect to the home page or dashboard
+    } else {
+      // Handle login error
+      console.error(data.message);
+    }
+  } catch (error) {
+    console.error('Login failed:', error);
+  }
+}
 
   return (
     <div id="signup-view">
