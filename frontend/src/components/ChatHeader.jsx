@@ -43,7 +43,17 @@ function ChatHeader({ apiKey, setApiKey, onClearChat }) {
 
   return (
     <header className="chat-header">
-      <div className="chat-title">
+      <div
+        className="chat-title"
+        onClick={() => {
+          // clear auth/session
+          localStorage.removeItem('geminiApiKey');
+          localStorage.removeItem('conversationHistory');
+          // redirect to homepage
+          window.location.href = '/';
+        }}
+        style={{ cursor: 'pointer' }}
+      >
         <div className="ai-icon">T</div>
         TextGen-AI Chat
       </div>

@@ -1,12 +1,8 @@
 // frontend/src/components/ChatMessages.jsx
 import React, { useEffect, useState } from 'react';
 
-function ChatMessages({ messages, onOpenCodeViewer, messagesEndRef }) {
+function ChatMessages({ messages, onOpenCodeViewer, messagesEndRef, isThinking }) {
   const [greeting, setGreeting] = useState('');
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -16,10 +12,13 @@ function ChatMessages({ messages, onOpenCodeViewer, messagesEndRef }) {
   }, []);
 
   const parseMarkdown = (text) => {
+    if (!text) return null;
     const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^**]+\*|```[\s\S]*?```)/g);
     return parts.map((part, index) => {
       if (part.startsWith('```')) {
-        const [_, lang, code] = part.match(/```(.*?)\n([\s\S]*?)```/);
+        const m = part.match(/```(.*?)\n([\s\S]*?)```/);
+        const lang = m ? m[1] : '';
+        const code = m ? m[2] : part;
         return (
           <pre
             key={index}
@@ -47,6 +46,11 @@ function ChatMessages({ messages, onOpenCodeViewer, messagesEndRef }) {
         </span>
       );
     });
+  };
+
+  const formatTime = (timestamp) => {
+    const d = timestamp ? new Date(timestamp) : new Date();
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -103,11 +107,48 @@ function ChatMessages({ messages, onOpenCodeViewer, messagesEndRef }) {
           >
             {message.role === 'user' ? 'You' : 'T'}
           </div>
+
           <div className="message-content-wrapper">
-            <div className="message-content">{parseMarkdown(message.text)}</div>
+            <div className="message-content">
+              {message.role === 'ai' && index === messages.length - 1 ? (
+                <>
+                  {isThinking && message.text === '' ? (
+                    <div className="thinking-animation">
+                      <div className="thinking-dot"></div>
+                      <div className="thinking-dot"></div>
+                      <div className="thinking-dot"></div>
+                    </div>
+                  ) : (
+                    parseMarkdown(message.text)
+                  )}
+                </>
+              ) : (
+                parseMarkdown(message.text)
+              )}
+            </div>
+
+            {/* Timestamp */}
+            <div className="message-time">{formatTime(message.timestamp)}</div>
+
+            {/* Copy buttons */}
             {message.role === 'ai' && (
               <button
-                className="copy-button"
+                className="copy-button ai-copy"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(message.text).then(() => {
+                    e.target.textContent = '✅';
+                    setTimeout(() => (e.target.textContent = '📋'), 1500);
+                  });
+                }}
+              >
+                📋
+              </button>
+            )}
+
+            {message.role === 'user' && (
+              <button
+                className="copy-button user-copy"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigator.clipboard.writeText(message.text).then(() => {
@@ -122,6 +163,8 @@ function ChatMessages({ messages, onOpenCodeViewer, messagesEndRef }) {
           </div>
         </div>
       ))}
+
+      {/* bottom target inside scrollable container */}
       <div ref={messagesEndRef} />
     </div>
   );

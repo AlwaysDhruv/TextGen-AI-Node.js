@@ -16,7 +16,7 @@ function ChatPage() {
 
   const messagesEndRef = useRef(null);
   let currentController = useRef(null);
-  let typingIntervalRef = useRef(null); // track printing interval
+  let typingIntervalRef = useRef(null);
 
   useEffect(() => {
     const storedConversation = localStorage.getItem('conversationHistory');
@@ -31,9 +31,28 @@ function ChatPage() {
     }
   }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Auto-scroll to bottom whenever messages change (robust)
+  useEffect(() => {
+    const el = messagesEndRef.current;
+    if (!el) return;
+
+    // allow DOM to update first
+    requestAnimationFrame(() => {
+      const container = el.closest('.chat-messages');
+      if (container) {
+        // scroll the messages container (preferred)
+        try {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        } catch (err) {
+          // fallback
+          el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+      } else {
+        // fallback if ref isn't inside .chat-messages
+        el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    });
+  }, [messages]);
 
   const handleSendMessage = async () => {
     if (input.trim() === '') return;
@@ -43,11 +62,12 @@ function ChatPage() {
     }
 
     const userMessage = { role: 'user', text: input };
-    setMessages((prev) => [...prev, userMessage]);
+    // create user message + placeholder AI message immediately
+    setMessages((prev) => [...prev, userMessage, { role: 'ai', text: '' }]);
     setInput('');
     setErrorMessage('');
-
     setIsThinking(true);
+
     const controller = new AbortController();
     currentController.current = controller;
 
@@ -70,24 +90,20 @@ function ChatPage() {
       const data = await res.json();
       const fullReply = data.reply;
 
-      // Add placeholder AI message
-      setMessages((prev) => [...prev, { role: 'ai', text: '' }]);
-
-      // Animate char by char
-      let i = 0;
-      typingIntervalRef.current = setInterval(() => {
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1].text = fullReply.slice(0, i + 1);
-          return updated;
-        });
-        i++;
-        if (i >= fullReply.length) {
-          clearInterval(typingIntervalRef.current);
-          typingIntervalRef.current = null;
-          setIsThinking(false);
-        }
-      }, 10); // faster speed
+let i = 0;
+typingIntervalRef.current = setInterval(() => {
+  setMessages((prev) => {
+    const updated = [...prev];
+    updated[updated.length - 1].text = fullReply.slice(0, i + 1);
+    return updated;
+  });
+  i++;
+  if (i >= fullReply.length) {
+    clearInterval(typingIntervalRef.current);
+    typingIntervalRef.current = null;
+    setIsThinking(false);
+  }
+}, 5);
     } catch (error) {
       if (error.name === 'AbortError') {
         setMessages((prev) => [...prev, { role: 'system', text: 'Generation stopped.' }]);
@@ -98,20 +114,15 @@ function ChatPage() {
       setIsThinking(false);
     } finally {
       currentController.current = null;
-      scrollToBottom();
     }
   };
 
   const handleStopGeneration = () => {
-    // Stop API call
     if (currentController.current) currentController.current.abort();
-
-    // Stop printing
     if (typingIntervalRef.current) {
       clearInterval(typingIntervalRef.current);
       typingIntervalRef.current = null;
     }
-
     setIsThinking(false);
   };
 
@@ -130,29 +141,16 @@ function ChatPage() {
       <ChatHeader apiKey={apiKey} setApiKey={setApiKey} onClearChat={handleClearChat} />
 
       <div className="chat-container">
-        {/* Chat messages (also handles greeting when empty) */}
         <ChatMessages
           messages={messages}
           onOpenCodeViewer={handleOpenCodeViewer}
           messagesEndRef={messagesEndRef}
+          isThinking={isThinking}
         />
 
-        {/* Thinking indicator */}
-        {isThinking && (
-          <div className="message ai">
-            <div className="message-avatar ai-avatar">T</div>
-            <div className="message-content">
-              <div className="thinking-animation">
-                <div className="thinking-dot"></div>
-                <div className="thinking-dot"></div>
-                <div className="thinking-dot"></div>
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+        {/* NOTE: removed duplicate <div ref={messagesEndRef} /> from parent.
+            The bottom ref is rendered inside ChatMessages (so scrolling targets the .chat-messages container). */}
 
-        {/* Input fixed at bottom */}
         <div className="chat-input-wrapper-fixed">
           <ChatInput
             input={input}
