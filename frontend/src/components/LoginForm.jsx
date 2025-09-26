@@ -63,9 +63,6 @@ function LoginForm({ onSwitchToSignup }) {
         <button type="submit">Login</button>
       </form>
       <div className="redirect-link">
-        <a href="/forgot-password">Forgot Password?</a>
-      </div>
-      <div className="redirect-link">
         Don&apos;t have an account? <a onClick={onSwitchToSignup}>Sign Up</a>
       </div>
     </div>
