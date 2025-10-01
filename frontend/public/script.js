@@ -2,28 +2,62 @@ class EnhancedGeminiChat {
     constructor() {
         this.history = [];
         this.allCodeBlocks = [];
-        this.currentCodeBlockIndex = null; // ADDED: To track code for modal
+        this.currentCodeBlockIndex = null;
         this.isGenerating = false;
         this.abortController = null;
         this.isStopped = false;
+        this.apiKey = null; // To hold the fetched API key
+
         this.initializeElements();
         this.attachEventListeners();
         this.setupInitialGreeting();
         this.createBackgroundParticles();
-        this.loadApiKey();
+        this.getApiKey(); // **MODIFIED: Fetch the key on initialization**
     }
 
-    loadApiKey() {
-        const savedApiKey = localStorage.getItem('geminiApiKey');
-        if (savedApiKey) {
-            this.apiKeyInput.value = savedApiKey;
+    // --- NEW: Securely fetch API key from the backend ---
+    async getApiKey() {
+        // First, check if the key is already in localStorage to avoid unnecessary requests
+        let storedApiKey = localStorage.getItem('geminiApiKey');
+
+        if (storedApiKey) {
+            this.apiKey = storedApiKey;
+            this.apiKeyInput.value = this.apiKey;
             this.handleApiKeyInput();
+            return;
+        }
+
+        // If not in storage, fetch from the server
+        try {
+            console.log("Fetching API key from server...");
+            // IMPORTANT: Ensure your backend is running on this address
+            const response = await fetch('http://localhost:5000/api/get-api-key');
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            if (data.apiKey) {
+                this.apiKey = data.apiKey;
+                localStorage.setItem('geminiApiKey', this.apiKey); // Cache the key
+                this.apiKeyInput.value = this.apiKey;
+                this.handleApiKeyInput();
+                console.log("API key fetched and stored successfully.");
+            } else {
+                 throw new Error('API key not found in server response.');
+            }
+        } catch (error) {
+            console.error('Failed to fetch API key:', error);
+            this.showError("Could not fetch API configuration from the server.");
+            this.handleApiKeyInput(); // Update UI state even if fetch fails
         }
     }
 
+
     handleApiKeyInput() {
         const apiKey = this.apiKeyInput.value.trim();
+        // Update the locally stored key whenever the user changes it manually
         localStorage.setItem('geminiApiKey', apiKey);
+        this.apiKey = apiKey; // Update the instance property
 
         const hasApiKey = apiKey.length > 0;
         this.chatInput.disabled = !hasApiKey;
@@ -31,9 +65,10 @@ class EnhancedGeminiChat {
 
         this.apiStatus.classList.toggle('connected', hasApiKey);
         this.apiStatus.title = hasApiKey ? 'API Key Connected' : 'API Key Required';
-        this.chatInput.placeholder = hasApiKey ? "Ask me anything..." : "Enter API key first...";
+        this.chatInput.placeholder = hasApiKey ? "Ask me anything..." : "Enter API key or wait for it to load...";
         if (hasApiKey) this.hideError();
     }
+
 
     // --- INITIALIZATION ---
     initializeElements() {
@@ -50,6 +85,7 @@ class EnhancedGeminiChat {
     attachEventListeners() {
         this.sendButton.addEventListener('click', () => this.sendMessage());
         this.stopButton.addEventListener('click', () => this.stopGeneration());
+        this.apiKeyInput.addEventListener('input', () => this.handleApiKeyInput());
 
         this.chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -62,7 +98,6 @@ class EnhancedGeminiChat {
             this.autoResizeTextarea();
             this.updateSendButtonState();
         });
-        this.apiKeyInput.addEventListener('input', () => this.handleApiKeyInput());
     }
 
     createBackgroundParticles() {
@@ -82,30 +117,24 @@ class EnhancedGeminiChat {
 
     setupInitialGreeting() {
         const hour = new Date().getHours();
-        let greeting;
-        if (hour < 12) {
-            greeting = "Good morning! ☀️";
-        } else if (hour < 18) {
-            greeting = "Good afternoon! 🌤️";
-        } else {
-            greeting = "Good evening! 🌙";
-        }
-
+        let greeting = (hour < 12) ? "Good morning! ☀️" : (hour < 18) ? "Good afternoon! 🌤️" : "Good evening! 🌙";
         const welcomeTitle = document.querySelector('.welcome-title');
         if (welcomeTitle) {
             welcomeTitle.textContent = `${greeting} Ready to chat?`;
         }
     }
 
+
     // --- CORE CHAT LOGIC ---
     async sendMessage() {
         const prompt = this.chatInput.value.trim();
-        const apiKey = this.apiKeyInput.value.trim();
+        // **MODIFIED: Use the apiKey property from the class instance**
+        const apiKey = this.apiKey;
         this.isStopped = false;
 
         if (!prompt || this.isGenerating) return;
         if (!apiKey) {
-            this.showError("🔑 API key is required. Get one from Google AI Studio.");
+            this.showError("🔑 API key is required. Please add it to your .env file on the server or enter it manually.");
             return;
         }
 
@@ -133,14 +162,12 @@ class EnhancedGeminiChat {
         try {
             this.abortController = new AbortController();
             const signal = this.abortController.signal;
-            const model = 'gemini-2.5-flash';
+            const model = 'gemini-2.5-flash'; // Corrected model name
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`;
 
             this.history.push({ role: "user", parts: [{ text: prompt }] });
 
-            const payload = {
-                contents: this.history,
-            };
+            const payload = { contents: this.history };
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -214,50 +241,40 @@ class EnhancedGeminiChat {
             this.setGeneratingState(false);
         }
     }
-
+    // ... (the rest of your EnhancedGeminiChat class remains unchanged)
     stopGeneration() {
         if (this.abortController) {
             this.isStopped = true;
             this.abortController.abort();
         }
     }
-
-    // --- UI AND MESSAGE HANDLING ---
     addMessage(sender, content) {
         const messageDiv = this.createMessageElement(sender, content);
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
         return messageDiv;
     }
-
     createMessageElement(sender, content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender} message-enter`;
-
         const avatar = document.createElement('div');
         avatar.className = `message-avatar ${sender}-avatar`;
         avatar.textContent = sender === 'user' ? 'U' : 'T';
-
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
         contentDiv.innerHTML = this.formatMessageContent(content);
-
         const time = document.createElement('div');
         time.className = 'message-time';
         time.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
         contentDiv.appendChild(time);
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(contentDiv);
-
         if (content) {
             const copyButton = this.createCopyButton(content);
             messageDiv.appendChild(copyButton);
         }
-
         return messageDiv;
     }
-
     createThinkingAnimation() {
         const animationDiv = document.createElement('div');
         animationDiv.className = 'thinking-animation';
@@ -268,7 +285,6 @@ class EnhancedGeminiChat {
         }
         return animationDiv;
     }
-
     createCopyButton(text) {
         const button = document.createElement('button');
         button.className = 'copy-button tooltip';
@@ -277,30 +293,23 @@ class EnhancedGeminiChat {
         button.addEventListener('click', () => this.copyToClipboard(text, button));
         return button;
     }
-
     formatMessageContent(content) {
         let htmlContent = this.escapeHtml(content)
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>');
-
         htmlContent = htmlContent.replace(/```(\w*?)\n([\s\S]+?)```/g, (match, lang, code) => {
             const unescapedCode = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
             const codeIndex = this.allCodeBlocks.length;
-
             this.allCodeBlocks.push({
                 code: unescapedCode.trim(),
                 language: lang || 'text'
             });
-
-            // MODIFIED: Added onclick to open the code viewer
             return `<pre onclick="window.geminiChat.openCodeViewer(${codeIndex})"><code class="language-${lang}">${this.escapeHtml(unescapedCode.trim())}</code></pre>`;
         })
             .replace(/`([^`]+)`/g, '<code>$1</code>')
             .replace(/\n/g, '<br>');
-
         return htmlContent;
     }
-
     escapeHtml(str) {
         return str
             .replace(/&/g, "&amp;")
@@ -309,7 +318,6 @@ class EnhancedGeminiChat {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
-
     setGeneratingState(isGenerating) {
         this.isGenerating = isGenerating;
         this.chatInput.disabled = isGenerating || !this.apiKeyInput.value.trim();
@@ -318,28 +326,22 @@ class EnhancedGeminiChat {
         this.updateSendButtonState();
         if (!isGenerating) this.chatInput.focus();
     }
-
     updateSendButtonState() {
         const hasMessage = this.chatInput.value.trim().length > 0;
         const hasApiKey = this.apiKeyInput.value.trim().length > 0;
         this.sendButton.disabled = !hasMessage || !hasApiKey || this.isGenerating;
     }
-
-    // --- UTILITY METHODS ---
     autoResizeTextarea() {
         this.chatInput.style.height = 'auto';
         this.chatInput.style.height = Math.min(this.chatInput.scrollHeight, 120) + 'px';
     }
-
     showError(message) {
         this.errorMessage.innerHTML = message;
         this.errorMessage.style.display = 'block';
     }
-
     hideError() {
         this.errorMessage.style.display = 'none';
     }
-
     async copyToClipboard(text, button) {
         try {
             const cleanText = new DOMParser().parseFromString(text, 'text/html').body.textContent || "";
@@ -356,42 +358,31 @@ class EnhancedGeminiChat {
             this.showError('❌ Failed to copy');
         }
     }
-
     scrollToBottom() {
         requestAnimationFrame(() => {
             this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
         });
     }
-
-    // --- NEW & MODIFIED METHODS FOR CODE VIEWER ---
-
     openCodeViewer(index) {
         const codeBlock = this.allCodeBlocks[index];
         if (!codeBlock) return;
-
         this.currentCodeBlockIndex = index;
-
         const modal = document.getElementById('codeViewerModal');
         const title = document.getElementById('codeViewerTitle');
         const content = document.getElementById('codeViewerContent');
-
         title.textContent = `Code Viewer - ${codeBlock.language}`;
-        content.textContent = codeBlock.code; // Use textContent to preserve formatting
-
+        content.textContent = codeBlock.code;
         modal.classList.add('show');
     }
-
     closeCodeViewer() {
         const modal = document.getElementById('codeViewerModal');
         modal.classList.remove('show');
         this.currentCodeBlockIndex = null;
     }
-
     copyCodeContent() {
         if (this.currentCodeBlockIndex === null) return;
         const codeBlock = this.allCodeBlocks[this.currentCodeBlockIndex];
         if (!codeBlock) return;
-
         navigator.clipboard.writeText(codeBlock.code).then(() => {
             const copyButton = document.getElementById('copyCodeButton');
             copyButton.textContent = '📋 Copied!';
@@ -402,12 +393,10 @@ class EnhancedGeminiChat {
             this.showError('❌ Failed to copy code.');
         });
     }
-
     downloadCode() {
         if (this.currentCodeBlockIndex === null) return;
         const codeBlock = this.allCodeBlocks[this.currentCodeBlockIndex];
         if (!codeBlock) return;
-
         const blob = new Blob([codeBlock.code], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -416,24 +405,15 @@ class EnhancedGeminiChat {
         a.click();
         URL.revokeObjectURL(url);
     }
-
-    // --- IMPORT / EXPORT / CLEAR ---
-
     clearChat() {
         this.history = [];
         this.allCodeBlocks = [];
         this.chatMessages.innerHTML = '';
         const welcomeMessage = document.createElement('div');
-        welcomeMessage.innerHTML = `
-                    <div class="welcome-message-container">
-                        <div class="welcome-title">Chat Cleared ✨</div>
-                        <div class="welcome-subtitle">Ready for a new conversation!</div>
-                    </div>
-                `;
+        welcomeMessage.innerHTML = `<div class="welcome-message-container"><div class="welcome-title">Chat Cleared ✨</div><div class="welcome-subtitle">Ready for a new conversation!</div></div>`;
         this.chatMessages.appendChild(welcomeMessage);
         this.welcomeContainer = this.chatMessages.querySelector('.welcome-message-container');
     }
-
     exportChat() {
         if (this.history.length === 0) {
             this.showError('❌ Nothing to export.');
@@ -449,17 +429,14 @@ class EnhancedGeminiChat {
         URL.revokeObjectURL(url);
         this.showSuccess('📥 Chat exported successfully!');
     }
-
     importChat() {
         const fileInput = document.getElementById('fileInput');
         fileInput.onchange = (e) => this.handleFileImport(e);
         fileInput.click();
     }
-
     handleFileImport(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -467,18 +444,15 @@ class EnhancedGeminiChat {
                 if (!importedData.messages || !Array.isArray(importedData.messages)) {
                     throw new Error("Invalid chat file format.");
                 }
-
                 this.clearChat();
                 this.history = importedData.messages;
                 this.chatMessages.innerHTML = '';
-
                 this.history.forEach(message => {
                     const role = message.role === 'model' ? 'ai' : 'user';
                     const content = message.parts[0].text;
                     this.addMessage(role, content);
                 });
                 this.showSuccess('📤 Chat imported successfully!');
-
             } catch (error) {
                 this.showError(`❌ Failed to import chat: ${error.message}`);
             } finally {
@@ -487,13 +461,11 @@ class EnhancedGeminiChat {
         };
         reader.readAsText(file);
     }
-
     showSuccess(message) {
         const successDiv = document.createElement('div');
         successDiv.style.cssText = `position: fixed; top: 20px; right: 20px; background: rgba(0, 255, 136, 0.2); color: var(--success-color); padding: 12px 20px; border-radius: 8px; border: 1px solid var(--success-color); backdrop-filter: blur(10px); z-index: 1000; animation: slideInRight 0.3s ease-out;`;
         successDiv.textContent = message;
         document.body.appendChild(successDiv);
-
         setTimeout(() => {
             successDiv.style.animation = 'slideOutRight 0.3s ease-in forwards';
             setTimeout(() => successDiv.remove(), 300);
@@ -501,6 +473,7 @@ class EnhancedGeminiChat {
     }
 }
 
+// ... (rest of your event listeners and setup code remains the same)
 document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         document.getElementById('sendButton')?.click();
