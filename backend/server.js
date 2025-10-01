@@ -27,10 +27,8 @@ mongoose
 
 // --- Routes ---
 const authRoutes = require('./routes/auth');   // CommonJS
-const chatRoutes = require('./routes/chat');   // CommonJS
 
 app.use('/api/auth', authRoutes);
-app.use('/api/chat', chatRoutes);
 
 // --- Nodemailer Transporter ---
 const transporter = nodemailer.createTransport({
