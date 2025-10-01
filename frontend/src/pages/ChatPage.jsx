@@ -1,5 +1,6 @@
 // frontend/src/pages/ChatPage.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './ChatPage.css';
 import ChatHeader from '../components/ChatHeader';
 import ChatMessages from '../components/ChatMessages';
@@ -15,9 +16,20 @@ function ChatPage() {
   const [codeViewerContent, setCodeViewerContent] = useState('');
 
   const messagesEndRef = useRef(null);
-  let currentController = useRef(null);
-  let typingIntervalRef = useRef(null);
+  const currentController = useRef(null);
+  const currentStreamId = useRef(null);
 
+  const navigate = useNavigate();
+
+  // ✅ Redirect to login if not authenticated
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  // ✅ Load previous conversation
   useEffect(() => {
     const storedConversation = localStorage.getItem('conversationHistory');
     if (storedConversation) {
@@ -31,29 +43,23 @@ function ChatPage() {
     }
   }, [messages]);
 
-  // Auto-scroll to bottom whenever messages change (robust)
+  // ✅ Auto-scroll
   useEffect(() => {
     const el = messagesEndRef.current;
     if (!el) return;
-
-    // allow DOM to update first
     requestAnimationFrame(() => {
       const container = el.closest('.chat-messages');
       if (container) {
-        // scroll the messages container (preferred)
         try {
           container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-        } catch (err) {
-          // fallback
+        } catch {
           el.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
-      } else {
-        // fallback if ref isn't inside .chat-messages
-        el.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
     });
   }, [messages]);
 
+  // --- Send message with streaming ---
   const handleSendMessage = async () => {
     if (input.trim() === '') return;
     if (!apiKey) {
@@ -62,7 +68,6 @@ function ChatPage() {
     }
 
     const userMessage = { role: 'user', text: input };
-    // create user message + placeholder AI message immediately
     setMessages((prev) => [...prev, userMessage, { role: 'ai', text: '' }]);
     setInput('');
     setErrorMessage('');
@@ -70,15 +75,18 @@ function ChatPage() {
 
     const controller = new AbortController();
     currentController.current = controller;
+    const streamId = Date.now().toString();
+    currentStreamId.current = streamId;
 
     try {
-      const res = await fetch('http://localhost:5000/api/chat', {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${token}`, // ✅ secured with JWT
         },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ message: userMessage.text, streamId }),
         signal: controller.signal,
       });
 
@@ -87,41 +95,64 @@ function ChatPage() {
         throw new Error(errorData.error || 'API request failed.');
       }
 
-      const data = await res.json();
-      const fullReply = data.reply;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-let i = 0;
-typingIntervalRef.current = setInterval(() => {
-  setMessages((prev) => {
-    const updated = [...prev];
-    updated[updated.length - 1].text = fullReply.slice(0, i + 1);
-    return updated;
-  });
-  i++;
-  if (i >= fullReply.length) {
-    clearInterval(typingIntervalRef.current);
-    typingIntervalRef.current = null;
-    setIsThinking(false);
-  }
-}, 5);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const json = JSON.parse(line.substring(6));
+              const textChunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (textChunk) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1].text += textChunk;
+                  return updated;
+                });
+              }
+            } catch (e) {
+              console.warn('Malformed SSE JSON', e);
+            }
+          }
+          if (line.startsWith('event: end')) {
+            setIsThinking(false);
+          }
+        }
+      }
     } catch (error) {
       if (error.name === 'AbortError') {
-        setMessages((prev) => [...prev, { role: 'system', text: 'Generation stopped.' }]);
+        setMessages((prev) => [...prev, { role: 'system', text: '🛑 Generation stopped.' }]);
       } else {
         setErrorMessage(`Error: ${error.message}`);
-        setMessages((prev) => [...prev, { role: 'system', text: `Error: ${error.message}` }]);
+        setMessages((prev) => [...prev, { role: 'system', text: `❌ ${error.message}` }]);
       }
       setIsThinking(false);
     } finally {
       currentController.current = null;
+      currentStreamId.current = null;
     }
   };
 
-  const handleStopGeneration = () => {
+  // --- Stop generation ---
+  const handleStopGeneration = async () => {
     if (currentController.current) currentController.current.abort();
-    if (typingIntervalRef.current) {
-      clearInterval(typingIntervalRef.current);
-      typingIntervalRef.current = null;
+    if (currentStreamId.current) {
+      try {
+        await fetch(`http://localhost:5000/api/stop/${currentStreamId.current}`, {
+          method: 'POST',
+        });
+      } catch (err) {
+        console.error('Failed to stop stream:', err);
+      }
     }
     setIsThinking(false);
   };
@@ -147,9 +178,6 @@ typingIntervalRef.current = setInterval(() => {
           messagesEndRef={messagesEndRef}
           isThinking={isThinking}
         />
-
-        {/* NOTE: removed duplicate <div ref={messagesEndRef} /> from parent.
-            The bottom ref is rendered inside ChatMessages (so scrolling targets the .chat-messages container). */}
 
         <div className="chat-input-wrapper-fixed">
           <ChatInput

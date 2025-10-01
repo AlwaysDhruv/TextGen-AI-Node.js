@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 function LoginForm({ onSwitchToSignup }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,17 +16,19 @@ function LoginForm({ onSwitchToSignup }) {
       const data = await res.json();
 
       if (res.ok) {
+        // Save JWT token
         localStorage.setItem('token', data.token);
 
-        // Check if the user object and name exist before trying to save it
+        // Save user name if present
         if (data.user && data.user.name) {
           localStorage.setItem('userName', data.user.name);
         } else {
           console.warn('User name not found in API response.');
           localStorage.removeItem('userName');
         }
-        
-        navigate('/message');
+
+        // ✅ Redirect user to your standalone chat app
+        window.location.href = '/index.html'; 
       } else {
         alert(data.msg || 'Login failed.');
       }
@@ -63,7 +63,10 @@ function LoginForm({ onSwitchToSignup }) {
         <button type="submit">Login</button>
       </form>
       <div className="redirect-link">
-        Don&apos;t have an account? <a onClick={onSwitchToSignup}>Sign Up</a>
+        Don&apos;t have an account?{' '}
+        <a onClick={onSwitchToSignup} style={{ cursor: 'pointer' }}>
+          Sign Up
+        </a>
       </div>
     </div>
   );
