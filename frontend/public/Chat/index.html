@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TextGen-AI Chat - Enhanced</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Guard: redirect to /login if not logged in -->
+  <script>
+    if (!localStorage.getItem('token')) {
+      window.location.href = '/login';
+    }
+  </script>
+
+  <!-- Improved three-dot menu styles (ensures visibility) -->
+  <style>
+    /* --- Three-dot menu: improved visibility and placement --- */
+    .menu-dots-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;             /* push to the far right of header */
+      z-index: 9999;                 /* bring above other header elements */
+      padding-right: 12px;
+    }
+
+    .dots-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 36px;
+      border-radius: 9px;
+      background: rgba(255,255,255,0.04); /* subtle glass */
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--text-primary, #ffffff); /* high contrast text by default */
+      font-size: 20px;               /* larger glyph so it's visible */
+      font-weight: 600;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px;
+      transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    .dots-button:hover,
+    .dots-button:focus {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.07);
+      outline: none;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    }
+
+    .dots-button:active {
+      transform: translateY(0);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .dots-button .dots-glyph { 
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .dots-dropdown {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      background: rgba(11, 14, 22, 0.98); /* dark card to contrast */
+      color: var(--text-primary, #fff);
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 12px 40px rgba(2,6,23,0.75);
+      z-index: 10000;
+      min-width: 150px;
+      border: 1px solid rgba(255,255,255,0.03);
+      backdrop-filter: blur(6px);
+    }
+
+    .dots-dropdown.show { display: flex; }
+
+    .dots-dropdown .control-button {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .dots-dropdown .control-button:hover {
+      background: rgba(255,255,255,0.03);
+    }
+
+    /* Ensure dropdown is visible above other elements */
+    .menu-dots-container, .dots-dropdown {
+      pointer-events: auto;
+    }
+
+    /* tiny responsive tweak so the menu doesn't overlap on very small screens */
+    @media (max-width: 520px) {
+      .menu-dots-container { padding-right: 6px; }
+      .dots-button { width: 36px; height: 34px; font-size: 18px; }
+      .dots-dropdown { min-width: 130px; right: -6px; }
+    }
+
+    /* minimal helper so dropdown buttons visually match your UI */
+    .control-button svg { margin-right: 8px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <div class="background-particles" id="backgroundParticles"></div>
+
+  <div class="chat-header">
+    <div class="chat-title">
+      <div class="ai-icon">T</div>
+      TextGen-AI Chat
+    </div>
+
+    <!-- Three-dot menu container (replaces previous api-key area) -->
+    <div class="menu-dots-container" id="menuDotsContainer" aria-haspopup="true" aria-expanded="false">
+      <button id="menuDotsBtn" class="dots-button tooltip" data-tooltip="Menu" aria-label="Menu">⋯</button>
+
+      <div class="dots-dropdown" id="dotsDropdown" aria-hidden="true">
+        <button
+          class="control-button tooltip"
+          data-tooltip="Import Chat"
+          id="importBtn"
+          title="Import Chat"
+        >
+          📤 Import
+        </button>
+        <button
+          class="control-button tooltip"
+          data-tooltip="Export Chat"
+          id="exportBtn"
+          title="Export Chat"
+        >
+          📥 Export
+        </button>
+        <button
+          class="control-button tooltip"
+          data-tooltip="Clear Chat"
+          id="clearBtn"
+          title="Clear Chat"
+        >
+          🗑️ Clear
+        </button>
+        <button
+          class="control-button tooltip"
+          data-tooltip="Logout"
+          id="logoutBtn"
+          title="Logout"
+        >
+          🚪 Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-container">
+    <div class="error-message" id="errorMessage"></div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="welcome-message-container">
+        <div class="welcome-title">Welcome to TextGen-AI Chat</div>
+        <p style="color: var(--text-secondary); margin-bottom: 20px">
+          Get your free API key from
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            class="api-link"
+            >Google AI Studio</a
+          >
+        </p>
+        <div class="welcome-features">
+          <div class="feature-card">
+            <div class="feature-title">💡 Smart Conversations</div>
+            <div class="feature-description">
+              Powered by Gemini 1.5 Flash for fast, intelligent responses
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-title">🎨 Beautiful Interface</div>
+            <div class="feature-description">
+              Modern design with smooth animations and glassmorphism effects
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-title">⚡ Real-time Streaming</div>
+            <div class="feature-description">
+              Watch responses appear in real-time as they're generated
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-title">🔒 Secure & Private</div>
+            <div class="feature-description">
+              Your API key is stored locally and never shared
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-container">
+      <div class="chat-input-wrapper">
+        <textarea
+          class="chat-input"
+          id="chatInput"
+          placeholder="Ask me anything..."
+          rows="1"
+          disabled
+        ></textarea>
+        <button
+          class="send-button tooltip"
+          id="sendButton"
+          disabled
+          data-tooltip="Send Message (Ctrl+Enter)"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
+          </svg>
+        </button>
+        <button
+          class="stop-button tooltip"
+          id="stopButton"
+          data-tooltip="Stop Generation (Esc)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 6h12v12H6z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="code-viewer-modal" id="codeViewerModal">
+    <div class="code-viewer-window">
+      <div class="code-viewer-header">
+        <div class="code-viewer-title" id="codeViewerTitle">Code Viewer</div>
+        <div class="code-viewer-actions">
+          <button
+            class="code-action-button"
+            id="copyCodeButton"
+            onclick="window.geminiChat.copyCodeContent()"
+          >
+            📋 Copy
+          </button>
+          <button
+            class="code-action-button"
+            onclick="window.geminiChat.downloadCode()"
+          >
+            💾 Download
+          </button>
+          <button
+            class="code-action-button"
+            onclick="window.geminiChat.closeCodeViewer()"
+          >
+            ✕ Close
+          </button>
+        </div>
+      </div>
+      <div class="code-viewer-content" id="codeViewerContent"></div>
+    </div>
+  </div>
+
+  <input
+    type="file"
+    id="fileInput"
+    style="display: none"
+    accept=".json"
+  />
+
+  <script src="script.js"></script>
+
+  <!-- Add logout & menu handlers -->
+  <script>
+    function logoutUser() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('geminiApiKey');
+      localStorage.removeItem('conversationHistory');
+      window.location.href = '/';
+    }
+
+    // Wire up the dropdown buttons after DOM load
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuBtn = document.getElementById('menuDotsBtn');
+      const dropdown = document.getElementById('dotsDropdown');
+
+      if (menuBtn && dropdown) {
+        // Ensure visible if CSS elsewhere hides it
+        menuBtn.style.display = menuBtn.style.display || 'inline-flex';
+        menuBtn.style.visibility = 'visible';
+        menuBtn.style.opacity = '1';
+
+        menuBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dropdown.classList.toggle('show');
+          dropdown.setAttribute('aria-hidden', !dropdown.classList.contains('show'));
+          document.getElementById('menuDotsContainer')?.setAttribute('aria-expanded', dropdown.classList.contains('show'));
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!menuBtn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+            dropdown.setAttribute('aria-hidden', 'true');
+            document.getElementById('menuDotsContainer')?.setAttribute('aria-expanded', 'false');
+          }
+        });
+
+        // Hook up the four buttons to the functions in script.js (safely)
+        document.getElementById('importBtn')?.addEventListener('click', () => {
+          dropdown.classList.remove('show');
+          window.geminiChat?.importChat();
+        });
+        document.getElementById('exportBtn')?.addEventListener('click', () => {
+          dropdown.classList.remove('show');
+          window.geminiChat?.exportChat();
+        });
+        document.getElementById('clearBtn')?.addEventListener('click', () => {
+          dropdown.classList.remove('show');
+          window.geminiChat?.clearChat();
+        });
+        document.getElementById('logoutBtn')?.addEventListener('click', () => {
+          dropdown.classList.remove('show');
+          logoutUser();
+        });
+      }
+    });
+  </script>
+</body>
+</html>

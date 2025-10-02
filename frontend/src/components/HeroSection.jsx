@@ -9,7 +9,7 @@ function HeroSection() {
       <div className="flex flex-col sm:flex-row justify-center gap-4">
         {/* Pass state to show the SignUpForm */}
         <Link to="/auth" state={{ isLoginView: false }} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">Get Started</Link>
-        <a href="/try-it" className="border border-blue-500 text-blue-400 px-6 py-3 rounded-lg hover:bg-blue-600 hover:text-white transition">Try It</a>
+        <a href="/Temp/chat.html" className="border border-blue-500 text-blue-400 px-6 py-3 rounded-lg hover:bg-blue-600 hover:text-white transition">Try It</a>
       </div>
     </div>
   );

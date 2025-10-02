@@ -5,15 +5,23 @@ function SignUpForm({ onSwitchToLogin }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     try {
       const res = await fetch('http://localhost:5000/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // FIX: backend expects `name`, not `fullName`
         body: JSON.stringify({ name: fullName, email, password }),
       });
 
@@ -21,41 +29,24 @@ function SignUpForm({ onSwitchToLogin }) {
 
       if (res.ok) {
         localStorage.setItem('token', data.token);
-        navigate('/'); // Redirect to home on successful signup
+        navigate('/');
       } else {
-        // Show backend error message if available
-        alert(data.msg || 'Signup failed.');
+        setError(data.msg || 'Signup failed.');
       }
     } catch (err) {
       console.error('Signup error:', err);
-      alert('Server error. Please try again.');
+      setError('Server error. Please try again.');
     }
   };
-// Inside your login or signup submission handler
-async function handleLogin(e) {
-  e.preventDefault();
-  try {
-    const response = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
 
-    const data = await response.json();
-
-    if (response.ok) {
-      // Assuming your backend sends the user name upon successful login
-      // You would save this to a global state or local storage
-      localStorage.setItem('userName', data.user.name); 
-      // Redirect to the home page or dashboard
-    } else {
-      // Handle login error
-      console.error(data.message);
-    }
-  } catch (error) {
-    console.error('Login failed:', error);
-  }
-}
+  const handlePasswordChange = (val) => {
+    setPassword(val);
+    if (error) setError('');
+  };
+  const handleConfirmPasswordChange = (val) => {
+    setConfirmPassword(val);
+    if (error) setError('');
+  };
 
   return (
     <div id="signup-view">
@@ -77,17 +68,55 @@ async function handleLogin(e) {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+
         <div className="password-container">
           <input
             className="input-field"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             placeholder="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => handlePasswordChange(e.target.value)}
             required
           />
+          <i
+            className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}
+            onClick={() => setShowPassword(!showPassword)}
+          ></i>
         </div>
-        <button type="submit">Sign Up</button>
+
+        <div className="password-container">
+          <input
+            className="input-field"
+            type={showConfirmPassword ? 'text' : 'password'}
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+            required
+          />
+          <i
+            className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          ></i>
+        </div>
+
+        {error && (
+          <div className="form-error" style={{ color: 'red', marginBottom: '8px' }}>
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={
+            !fullName ||
+            !email ||
+            !password ||
+            !confirmPassword ||
+            password !== confirmPassword
+          }
+        >
+          Sign Up
+        </button>
       </form>
       <div className="redirect-link">
         Already have an account? <a onClick={onSwitchToLogin}>Login</a>

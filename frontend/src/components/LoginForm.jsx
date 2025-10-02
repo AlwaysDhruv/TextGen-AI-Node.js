@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 function LoginForm({ onSwitchToSignup }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,19 +17,14 @@ function LoginForm({ onSwitchToSignup }) {
       const data = await res.json();
 
       if (res.ok) {
-        // Save JWT token
         localStorage.setItem('token', data.token);
-
-        // Save user name if present
         if (data.user && data.user.name) {
           localStorage.setItem('userName', data.user.name);
         } else {
           console.warn('User name not found in API response.');
           localStorage.removeItem('userName');
         }
-
-        // ✅ Redirect user to your standalone chat app
-        window.location.href = '/index.html'; 
+        window.location.href = '/Chat/index.html';
       } else {
         alert(data.msg || 'Login failed.');
       }
@@ -53,12 +49,16 @@ function LoginForm({ onSwitchToSignup }) {
         <div className="password-container">
           <input
             className="input-field"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <i
+            className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}
+            onClick={() => setShowPassword(!showPassword)}
+          ></i>
         </div>
         <button type="submit">Login</button>
       </form>

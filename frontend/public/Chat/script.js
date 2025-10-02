@@ -12,25 +12,24 @@ class EnhancedGeminiChat {
         this.attachEventListeners();
         this.setupInitialGreeting();
         this.createBackgroundParticles();
-        this.getApiKey(); // **MODIFIED: Fetch the key on initialization**
+        this.getApiKey();
     }
 
     // --- NEW: Securely fetch API key from the backend ---
     async getApiKey() {
-        // First, check if the key is already in localStorage to avoid unnecessary requests
         let storedApiKey = localStorage.getItem('geminiApiKey');
 
         if (storedApiKey) {
             this.apiKey = storedApiKey;
-            this.apiKeyInput.value = this.apiKey;
+            if (this.apiKeyInput) {
+                this.apiKeyInput.value = this.apiKey;
+            }
             this.handleApiKeyInput();
             return;
         }
 
-        // If not in storage, fetch from the server
         try {
             console.log("Fetching API key from server...");
-            // IMPORTANT: Ensure your backend is running on this address
             const response = await fetch('http://localhost:5000/api/get-api-key');
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -38,8 +37,10 @@ class EnhancedGeminiChat {
             const data = await response.json();
             if (data.apiKey) {
                 this.apiKey = data.apiKey;
-                localStorage.setItem('geminiApiKey', this.apiKey); // Cache the key
-                this.apiKeyInput.value = this.apiKey;
+                localStorage.setItem('geminiApiKey', this.apiKey);
+                if (this.apiKeyInput) {
+                    this.apiKeyInput.value = this.apiKey;
+                }
                 this.handleApiKeyInput();
                 console.log("API key fetched and stored successfully.");
             } else {
@@ -48,27 +49,37 @@ class EnhancedGeminiChat {
         } catch (error) {
             console.error('Failed to fetch API key:', error);
             this.showError("Could not fetch API configuration from the server.");
-            this.handleApiKeyInput(); // Update UI state even if fetch fails
+            this.handleApiKeyInput();
         }
     }
 
-
     handleApiKeyInput() {
-        const apiKey = this.apiKeyInput.value.trim();
-        // Update the locally stored key whenever the user changes it manually
-        localStorage.setItem('geminiApiKey', apiKey);
-        this.apiKey = apiKey; // Update the instance property
+        let apiKey = '';
+        if (this.apiKeyInput) {
+            apiKey = this.apiKeyInput.value.trim();
+            localStorage.setItem('geminiApiKey', apiKey);
+            this.apiKey = apiKey;
+        } else {
+            apiKey = this.apiKey || localStorage.getItem('geminiApiKey') || '';
+            this.apiKey = apiKey;
+        }
 
         const hasApiKey = apiKey.length > 0;
-        this.chatInput.disabled = !hasApiKey;
+
+        if (this.chatInput) {
+            this.chatInput.disabled = !hasApiKey;
+        }
         this.updateSendButtonState();
 
-        this.apiStatus.classList.toggle('connected', hasApiKey);
-        this.apiStatus.title = hasApiKey ? 'API Key Connected' : 'API Key Required';
-        this.chatInput.placeholder = hasApiKey ? "Ask me anything..." : "Enter API key or wait for it to load...";
+        if (this.apiStatus) {
+            this.apiStatus.classList.toggle('connected', hasApiKey);
+            this.apiStatus.title = hasApiKey ? 'API Key Connected' : 'API Key Required';
+        }
+        if (this.chatInput) {
+            this.chatInput.placeholder = hasApiKey ? "Ask me anything..." : "Enter API key on server or wait for it to load...";
+        }
         if (hasApiKey) this.hideError();
     }
-
 
     // --- INITIALIZATION ---
     initializeElements() {
@@ -76,27 +87,45 @@ class EnhancedGeminiChat {
         this.chatInput = document.getElementById('chatInput');
         this.sendButton = document.getElementById('sendButton');
         this.stopButton = document.getElementById('stopButton');
-        this.apiKeyInput = document.getElementById('apiKeyInput');
-        this.apiStatus = document.getElementById('apiStatus');
+        this.apiKeyInput = document.getElementById('apiKeyInput') || null;
+        this.apiStatus = document.getElementById('apiStatus') || null;
         this.errorMessage = document.getElementById('errorMessage');
         this.welcomeContainer = document.querySelector('.welcome-message-container');
     }
 
     attachEventListeners() {
-        this.sendButton.addEventListener('click', () => this.sendMessage());
-        this.stopButton.addEventListener('click', () => this.stopGeneration());
-        this.apiKeyInput.addEventListener('input', () => this.handleApiKeyInput());
+        this.sendButton?.addEventListener('click', () => this.sendMessage());
+        this.stopButton?.addEventListener('click', () => this.stopGeneration());
+        if (this.apiKeyInput) {
+            this.apiKeyInput.addEventListener('input', () => this.handleApiKeyInput());
+        }
 
-        this.chatInput.addEventListener('keypress', (e) => {
+        this.chatInput?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.sendMessage();
             }
         });
 
-        this.chatInput.addEventListener('input', () => {
+        this.chatInput?.addEventListener('input', () => {
             this.autoResizeTextarea();
             this.updateSendButtonState();
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                this.sendButton?.click();
+            }
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('codeViewerModal');
+                if (modal && modal.classList.contains('show')) {
+                    this.closeCodeViewer();
+                } else {
+                    this.stopButton?.click();
+                }
+            }
         });
     }
 
@@ -118,23 +147,22 @@ class EnhancedGeminiChat {
     setupInitialGreeting() {
         const hour = new Date().getHours();
         let greeting = (hour < 12) ? "Good morning! ☀️" : (hour < 18) ? "Good afternoon! 🌤️" : "Good evening! 🌙";
+        // Keep this minimal — header welcome content is controlled elsewhere
         const welcomeTitle = document.querySelector('.welcome-title');
         if (welcomeTitle) {
             welcomeTitle.textContent = `${greeting} Ready to chat?`;
         }
     }
 
-
     // --- CORE CHAT LOGIC ---
     async sendMessage() {
-        const prompt = this.chatInput.value.trim();
-        // **MODIFIED: Use the apiKey property from the class instance**
+        const prompt = this.chatInput?.value.trim() || '';
         const apiKey = this.apiKey;
         this.isStopped = false;
 
         if (!prompt || this.isGenerating) return;
         if (!apiKey) {
-            this.showError("🔑 API key is required. Please add it to your .env file on the server or enter it manually.");
+            this.showError("🔑 API key is required. Please add it to your .env file on the server or ensure server provides it.");
             return;
         }
 
@@ -147,8 +175,10 @@ class EnhancedGeminiChat {
         }
 
         this.addMessage('user', prompt);
-        this.chatInput.value = '';
-        this.autoResizeTextarea();
+        if (this.chatInput) {
+            this.chatInput.value = '';
+            this.autoResizeTextarea();
+        }
         this.setGeneratingState(true);
 
         const aiMessageContainer = this.createMessageElement('ai', '');
@@ -162,7 +192,7 @@ class EnhancedGeminiChat {
         try {
             this.abortController = new AbortController();
             const signal = this.abortController.signal;
-            const model = 'gemini-2.5-flash'; // Corrected model name
+            const model = 'gemini-2.5-flash';
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`;
 
             this.history.push({ role: "user", parts: [{ text: prompt }] });
@@ -177,8 +207,12 @@ class EnhancedGeminiChat {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error.message || `HTTP error! status: ${response.status}`);
+                let errorMsg = `HTTP error! status: ${response.status}`;
+                try {
+                    const errJson = await response.json();
+                    errorMsg = errJson.error?.message || errorMsg;
+                } catch (e) {}
+                throw new Error(errorMsg);
             }
 
             thinkingAnimation.remove();
@@ -201,7 +235,7 @@ class EnhancedGeminiChat {
                     if (line.startsWith('data: ')) {
                         try {
                             const json = JSON.parse(line.substring(6));
-                            const textChunk = json.candidates[0]?.content?.parts[0]?.text || '';
+                            const textChunk = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
                             if (textChunk) {
                                 fullResponse += textChunk;
                                 contentDiv.innerHTML = this.formatMessageContent(fullResponse);
@@ -223,10 +257,12 @@ class EnhancedGeminiChat {
             } else {
                 console.error('Error:', error);
                 let errorMsg = '❌ Sorry, I encountered an error.';
-                if (error.message.includes('API_KEY_INVALID')) {
+                if (error.message && error.message.includes('API_KEY_INVALID')) {
                     errorMsg = '🔑 Invalid API key. Please check your key.';
-                } else if (error.message.includes('QUOTA_EXCEEDED')) {
+                } else if (error.message && error.message.includes('QUOTA_EXCEEDED')) {
                     errorMsg = '📊 API quota exceeded.';
+                } else if (error.message) {
+                    errorMsg = error.message;
                 }
                 this.showError(errorMsg);
                 contentDiv.innerHTML = this.formatMessageContent(errorMsg);
@@ -234,26 +270,28 @@ class EnhancedGeminiChat {
         } finally {
             const messageDiv = contentDiv.closest('.message');
             if (messageDiv && !messageDiv.querySelector('.copy-button')) {
-                const finalContent = this.isStopped ? 'Generation stopped.' : contentDiv.innerText;
+                const finalContent = this.isStopped ? 'Generation stopped.' : (contentDiv.innerText || '');
                 const copyButton = this.createCopyButton(finalContent);
                 messageDiv.appendChild(copyButton);
             }
             this.setGeneratingState(false);
         }
     }
-    // ... (the rest of your EnhancedGeminiChat class remains unchanged)
+
     stopGeneration() {
         if (this.abortController) {
             this.isStopped = true;
             this.abortController.abort();
         }
     }
+
     addMessage(sender, content) {
         const messageDiv = this.createMessageElement(sender, content);
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
         return messageDiv;
     }
+
     createMessageElement(sender, content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender} message-enter`;
@@ -275,6 +313,7 @@ class EnhancedGeminiChat {
         }
         return messageDiv;
     }
+
     createThinkingAnimation() {
         const animationDiv = document.createElement('div');
         animationDiv.className = 'thinking-animation';
@@ -285,6 +324,7 @@ class EnhancedGeminiChat {
         }
         return animationDiv;
     }
+
     createCopyButton(text) {
         const button = document.createElement('button');
         button.className = 'copy-button tooltip';
@@ -293,6 +333,7 @@ class EnhancedGeminiChat {
         button.addEventListener('click', () => this.copyToClipboard(text, button));
         return button;
     }
+
     formatMessageContent(content) {
         let htmlContent = this.escapeHtml(content)
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -310,6 +351,7 @@ class EnhancedGeminiChat {
             .replace(/\n/g, '<br>');
         return htmlContent;
     }
+
     escapeHtml(str) {
         return str
             .replace(/&/g, "&amp;")
@@ -318,30 +360,39 @@ class EnhancedGeminiChat {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
+
     setGeneratingState(isGenerating) {
         this.isGenerating = isGenerating;
-        this.chatInput.disabled = isGenerating || !this.apiKeyInput.value.trim();
-        this.sendButton.style.display = isGenerating ? 'none' : 'flex';
-        this.stopButton.style.display = isGenerating ? 'flex' : 'none';
+        if (this.chatInput) this.chatInput.disabled = isGenerating || !(this.apiKey && this.apiKey.length > 0);
+        if (this.sendButton) this.sendButton.style.display = isGenerating ? 'none' : 'flex';
+        if (this.stopButton) this.stopButton.style.display = isGenerating ? 'flex' : 'none';
         this.updateSendButtonState();
-        if (!isGenerating) this.chatInput.focus();
+        if (!isGenerating && this.chatInput) this.chatInput.focus();
     }
+
     updateSendButtonState() {
-        const hasMessage = this.chatInput.value.trim().length > 0;
-        const hasApiKey = this.apiKeyInput.value.trim().length > 0;
-        this.sendButton.disabled = !hasMessage || !hasApiKey || this.isGenerating;
+        const hasMessage = this.chatInput && this.chatInput.value.trim().length > 0;
+        const hasApiKey = (this.apiKey && this.apiKey.length > 0) || (this.apiKeyInput && this.apiKeyInput.value.trim().length > 0);
+        if (this.sendButton) this.sendButton.disabled = !hasMessage || !hasApiKey || this.isGenerating;
     }
+
     autoResizeTextarea() {
+        if (!this.chatInput) return;
         this.chatInput.style.height = 'auto';
         this.chatInput.style.height = Math.min(this.chatInput.scrollHeight, 120) + 'px';
     }
+
     showError(message) {
+        if (!this.errorMessage) return;
         this.errorMessage.innerHTML = message;
         this.errorMessage.style.display = 'block';
     }
+
     hideError() {
+        if (!this.errorMessage) return;
         this.errorMessage.style.display = 'none';
     }
+
     async copyToClipboard(text, button) {
         try {
             const cleanText = new DOMParser().parseFromString(text, 'text/html').body.textContent || "";
@@ -358,11 +409,13 @@ class EnhancedGeminiChat {
             this.showError('❌ Failed to copy');
         }
     }
+
     scrollToBottom() {
         requestAnimationFrame(() => {
             this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
         });
     }
+
     openCodeViewer(index) {
         const codeBlock = this.allCodeBlocks[index];
         if (!codeBlock) return;
@@ -374,11 +427,13 @@ class EnhancedGeminiChat {
         content.textContent = codeBlock.code;
         modal.classList.add('show');
     }
+
     closeCodeViewer() {
         const modal = document.getElementById('codeViewerModal');
         modal.classList.remove('show');
         this.currentCodeBlockIndex = null;
     }
+
     copyCodeContent() {
         if (this.currentCodeBlockIndex === null) return;
         const codeBlock = this.allCodeBlocks[this.currentCodeBlockIndex];
@@ -393,6 +448,7 @@ class EnhancedGeminiChat {
             this.showError('❌ Failed to copy code.');
         });
     }
+
     downloadCode() {
         if (this.currentCodeBlockIndex === null) return;
         const codeBlock = this.allCodeBlocks[this.currentCodeBlockIndex];
@@ -405,6 +461,7 @@ class EnhancedGeminiChat {
         a.click();
         URL.revokeObjectURL(url);
     }
+
     clearChat() {
         this.history = [];
         this.allCodeBlocks = [];
@@ -414,6 +471,7 @@ class EnhancedGeminiChat {
         this.chatMessages.appendChild(welcomeMessage);
         this.welcomeContainer = this.chatMessages.querySelector('.welcome-message-container');
     }
+
     exportChat() {
         if (this.history.length === 0) {
             this.showError('❌ Nothing to export.');
@@ -429,11 +487,13 @@ class EnhancedGeminiChat {
         URL.revokeObjectURL(url);
         this.showSuccess('📥 Chat exported successfully!');
     }
+
     importChat() {
         const fileInput = document.getElementById('fileInput');
         fileInput.onchange = (e) => this.handleFileImport(e);
         fileInput.click();
     }
+
     handleFileImport(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -461,9 +521,10 @@ class EnhancedGeminiChat {
         };
         reader.readAsText(file);
     }
+
     showSuccess(message) {
         const successDiv = document.createElement('div');
-        successDiv.style.cssText = `position: fixed; top: 20px; right: 20px; background: rgba(0, 255, 136, 0.2); color: var(--success-color); padding: 12px 20px; border-radius: 8px; border: 1px solid var(--success-color); backdrop-filter: blur(10px); z-index: 1000; animation: slideInRight 0.3s ease-out;`;
+        successDiv.style.cssText = `position: fixed; top: 20px; right: 20px; background: rgba(0, 255, 136, 0.12); color: var(--success-color, #00ff88); padding: 12px 20px; border-radius: 8px; border: 1px solid rgba(0,255,136,0.18); backdrop-filter: blur(10px); z-index: 1000; animation: slideInRight 0.3s ease-out;`;
         successDiv.textContent = message;
         document.body.appendChild(successDiv);
         setTimeout(() => {
@@ -473,14 +534,19 @@ class EnhancedGeminiChat {
     }
 }
 
-// ... (rest of your event listeners and setup code remains the same)
+// Initialize instance on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.geminiChat = new EnhancedGeminiChat();
+});
+
+// Small global key handlers (safety)
 document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         document.getElementById('sendButton')?.click();
     }
     if (e.key === 'Escape') {
         const modal = document.getElementById('codeViewerModal');
-        if (modal.classList.contains('show')) {
+        if (modal && modal.classList.contains('show')) {
             window.geminiChat?.closeCodeViewer();
         } else {
             document.getElementById('stopButton')?.click();
@@ -488,10 +554,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// Add basic keyframe styles used by showSuccess
 const style = document.createElement('style');
 style.textContent = `@keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } } @keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }`;
 document.head.appendChild(style);
-
-document.addEventListener('DOMContentLoaded', () => {
-    window.geminiChat = new EnhancedGeminiChat();
-});
