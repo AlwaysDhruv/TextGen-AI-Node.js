@@ -1,4 +1,4 @@
-# MERN Stack Application with AI Chat
+# MERN Stack Application with AI Chat(TextGen-AI)
 
 This is a full-stack web application built with the MERN (MongoDB, Express, React, Node.js) stack. It includes user authentication, a contact form, and an AI-powered chat feature using Google's Gemini Pro model.
 
