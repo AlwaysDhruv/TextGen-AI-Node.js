@@ -26,18 +26,10 @@ function NavigationBar() {
                 </Link>
             </div>
             <div className="space-x-4 flex items-center">
-                    {isAuthenticated ? (
-                        <>
-                            <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition">
-                                Sign Out
-                            </button>
-                        </>
-                    ) : (
-                    <>
-                        <Link to="/auth" state={{ isLoginView: false }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">Sign Up</Link>
-                        <Link to="/auth" state={{ isLoginView: true }} className="text-white hover:text-blue-400 underline px-3 py-2 transition">Sign In</Link>
-                    </>
-                )}
+                <>
+                    <Link to="/auth" state={{ isLoginView: false }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">Sign Up</Link>
+                    <Link to="/auth" state={{ isLoginView: true }} className="text-white hover:text-blue-400 underline px-3 py-2 transition">Sign In</Link>
+                </>
             </div>
         </nav>
     );

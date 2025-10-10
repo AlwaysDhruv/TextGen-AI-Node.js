@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 
-function LoginForm({ onSwitchToSignup }) {
+function LoginForm({ onSwitchToSignup, onSwitchToForgot }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
     try {
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
@@ -24,13 +26,14 @@ function LoginForm({ onSwitchToSignup }) {
           console.warn('User name not found in API response.');
           localStorage.removeItem('userName');
         }
+        // ✅ Redirect to chat interface
         window.location.href = '/Chat/index.html';
       } else {
-        alert(data.msg || 'Login failed.');
+        setErrorMsg(data.msg || 'Invalid email or password.');
       }
     } catch (err) {
       console.error('Login error:', err);
-      alert('Server error. Please try again.');
+      setErrorMsg('Server error. Please try again later.');
     }
   };
 
@@ -46,6 +49,7 @@ function LoginForm({ onSwitchToSignup }) {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+
         <div className="password-container">
           <input
             className="input-field"
@@ -60,8 +64,23 @@ function LoginForm({ onSwitchToSignup }) {
             onClick={() => setShowPassword(!showPassword)}
           ></i>
         </div>
+
+        {errorMsg && (
+          <p style={{ color: 'red', marginBottom: '10px', textAlign: 'center' }}>
+            {errorMsg}
+          </p>
+        )}
+
         <button type="submit">Login</button>
       </form>
+
+      {/* Forgot Password link */}
+      <div className="redirect-link">
+        <a onClick={onSwitchToForgot} style={{ cursor: 'pointer' }}>
+          Forgot Password?
+        </a>
+      </div>
+
       <div className="redirect-link">
         Don&apos;t have an account?{' '}
         <a onClick={onSwitchToSignup} style={{ cursor: 'pointer' }}>

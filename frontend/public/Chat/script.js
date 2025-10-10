@@ -554,6 +554,28 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// --- Warn user before refresh or tab close if chat exists ---
+window.addEventListener('beforeunload', (e) => {
+    // Check if chat has any messages
+    if (window.geminiChat && window.geminiChat.history && window.geminiChat.history.length > 0) {
+        const confirmationMessage = "You have unsaved chat history. Would you like to export it before leaving?";
+        
+        // Show standard browser confirmation dialog
+        e.preventDefault();
+        e.returnValue = confirmationMessage;
+
+        // Optional: Trigger auto-export if user confirms via event
+        setTimeout(() => {
+            const shouldExport = confirm("⚠️ You’re about to leave this page.\n\nDo you want to export your chat before exiting?");
+            if (shouldExport) {
+                window.geminiChat.exportChat();
+            }
+        }, 0);
+
+        return confirmationMessage;
+    }
+});
+
 // Add basic keyframe styles used by showSuccess
 const style = document.createElement('style');
 style.textContent = `@keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } } @keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }`;

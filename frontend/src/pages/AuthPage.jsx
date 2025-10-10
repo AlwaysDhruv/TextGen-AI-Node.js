@@ -2,32 +2,48 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import LoginForm from '../components/LoginForm';
 import SignUpForm from '../components/SignUpForm';
+import ForgotPassword from '../components/ForgotPassword'; // <-- NEW
 import './Auth.css';
 
 function AuthPage() {
   const location = useLocation();
-  // Read the state from the link, default to login view if no state is passed
-  const [isLogin, setIsLogin] = useState(location.state?.isLoginView ?? true);
 
-  // This ensures the view updates if the user clicks another link while on the page
+  // Determine the default view (login by default)
+  const [view, setView] = useState(location.state?.isLoginView ? 'login' : 'signup');
+
+  // Keep view in sync with router state if it changes
   useEffect(() => {
-    setIsLogin(location.state?.isLoginView ?? true);
+    if (location.state?.isLoginView === true) setView('login');
+    else if (location.state?.isLoginView === false) setView('signup');
   }, [location.state]);
 
-  const switchToSignup = () => setIsLogin(false);
-  const switchToLogin = () => setIsLogin(true);
+  // Switch helpers
+  const switchToSignup = () => setView('signup');
+  const switchToLogin = () => setView('login');
+  const switchToForgot = () => setView('forgot');
 
   return (
     <div className="auth-page-container">
+      {/* Background animation */}
       <div className="bg-animation">
         {Array.from({ length: 256 }).map((_, i) => <span key={i}>*</span>)}
       </div>
+
       <div className="auth-wrapper">
         <div className="auth-container">
-          {isLogin ? (
-            <LoginForm onSwitchToSignup={switchToSignup} />
-          ) : (
+          {view === 'login' && (
+            <LoginForm
+              onSwitchToSignup={switchToSignup}
+              onSwitchToForgot={switchToForgot} // <-- NEW
+            />
+          )}
+
+          {view === 'signup' && (
             <SignUpForm onSwitchToLogin={switchToLogin} />
+          )}
+
+          {view === 'forgot' && (
+            <ForgotPassword onBackToLogin={switchToLogin} />
           )}
         </div>
       </div>
