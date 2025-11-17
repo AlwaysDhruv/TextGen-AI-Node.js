@@ -84,8 +84,6 @@ function HomePage() {
         <FeaturesSection />
         <ContactForm />
       </main>
-
-      {/* Footer is added back here */}
       <Footer />
     </div>
   );
