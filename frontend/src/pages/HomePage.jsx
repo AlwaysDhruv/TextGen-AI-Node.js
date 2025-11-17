@@ -76,7 +76,6 @@ function HomePage() {
     <div className="App">
       <Particles id="tsparticles" init={particlesInit} options={particleOptions} />
       
-      {/* NavigationBar is added back here */}
       <NavigationBar />
       
       <main>
