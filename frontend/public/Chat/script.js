@@ -6,7 +6,7 @@ class EnhancedGeminiChat {
         this.isGenerating = false;
         this.abortController = null;
         this.isStopped = false;
-        this.apiKey = null; // To hold the fetched API key
+        this.apiKey = null;
 
         this.initializeElements();
         this.attachEventListeners();
@@ -15,7 +15,6 @@ class EnhancedGeminiChat {
         this.getApiKey();
     }
 
-    // --- NEW: Securely fetch API key from the backend ---
     async getApiKey() {
         let storedApiKey = localStorage.getItem('geminiApiKey');
 
@@ -81,7 +80,6 @@ class EnhancedGeminiChat {
         if (hasApiKey) this.hideError();
     }
 
-    // --- INITIALIZATION ---
     initializeElements() {
         this.chatMessages = document.getElementById('chatMessages');
         this.chatInput = document.getElementById('chatInput');
