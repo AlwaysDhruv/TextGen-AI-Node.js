@@ -1,4 +1,4 @@
-# TextGen-AI: MERN Stack Application with AI Chat
+# TextGen-AI: MERN Stack Application with AI
 
 TextGen-AI is a full-stack web application built with the MERN (MongoDB, Express, React, Node.js) stack. It provides a modern, interactive user experience with features like user authentication, a contact form, and an AI-powered chat powered by Google's Gemini Pro model. This project serves as a comprehensive example of a modern web application with a decoupled frontend and backend architecture.
 
